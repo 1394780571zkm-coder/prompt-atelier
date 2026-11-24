@@ -1,0 +1,16 @@
+Prompt Atelier / 描绘提示词工作台
+
+This distribution includes Electron and its Chromium notices (LICENSE.electron.txt
+and LICENSES.chromium.html alongside the executable), Node.js (runtime/LICENSE),
+and npm packages with their respective licenses inside resources/app/node_modules.
+
+Local translation uses:
+- Xenova/opus-mt-en-zh, converted from Helsinki-NLP/opus-mt-en-zh (Apache-2.0).
+  https://huggingface.co/Helsinki-NLP/opus-mt-en-zh
+- Xenova/m2m100_418M, converted from facebook/m2m100_418M (MIT).
+  https://huggingface.co/facebook/m2m100_418M
+See licenses/ for model cards and attribution.
+
+The application uses @huggingface/transformers (Apache-2.0), ONNX Runtime (MIT),
+and DeepSeek Harness (MIT). API usage requires the recipient's own API key.
+No personal prompt library, images, saved credentials, or API key is included.

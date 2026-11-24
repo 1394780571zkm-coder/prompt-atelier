@@ -1,0 +1,29 @@
+module.exports = {
+  appId:'com.promptatelier.desktop',
+  productName:'描绘提示词工作台',
+  artifactName:'PromptAtelier-Setup-${version}-${arch}.${ext}',
+  directories:{output:'dist'},
+  asar:false,
+  npmRebuild:false,
+  electronDist:'node_modules/electron/dist',
+  files:[
+    'main.cjs','preload.cjs','harness.cjs','remote-image.cjs','translation.cjs',
+    'harness-text-only.yml','ui/**/*','package.json','LICENSE',
+    '!node_modules/onnxruntime-node/bin/napi-v3/{darwin,linux}/**/*',
+    '!node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/**/*'
+  ],
+  extraResources:[
+    {from:'data/translation-models',to:'translation-models',filter:['**/*','!**/*.part','!**/*.tmp']},
+    {from:'build/runtime',to:'runtime'},
+    {from:'build/THIRD-PARTY-NOTICES.txt',to:'THIRD-PARTY-NOTICES.txt'},
+    {from:'build/opus-mt-model-card.md',to:'licenses/opus-mt-model-card.md'},
+    {from:'build/m2m100-model-card.md',to:'licenses/m2m100-model-card.md'}
+  ],
+  win:{target:[{target:'nsis',arch:['x64']}],signAndEditExecutable:false},
+  nsis:{
+    oneClick:false,perMachine:false,allowToChangeInstallationDirectory:true,
+    createDesktopShortcut:true,createStartMenuShortcut:true,
+    shortcutName:'描绘提示词工作台',deleteAppDataOnUninstall:false,
+    installerLanguages:['zh_CN','en_US'],language:'2052'
+  }
+};

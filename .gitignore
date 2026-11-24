@@ -1,0 +1,14 @@
+node_modules/
+data/
+*.log
+dist/
+build/runtime/
+插画库/
+*.lnk
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+Thumbs.db
