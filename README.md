@@ -2,13 +2,13 @@
 
 [下载安装包](https://github.com/1394780571zkm-coder/prompt-atelier/releases/latest) · [查看发布记录](https://github.com/1394780571zkm-coder/prompt-atelier/releases) · [MIT 许可证](LICENSE)
 
-只想使用软件：进入上方下载页，在 Assets 中下载 `PromptAtelier-Setup-1.0.2-x64.exe`。GitHub 自动提供的 Source code 压缩包是源码，不是安装包。
+只想使用软件：进入上方下载页，在 Assets 中下载 `PromptAtelier-Setup-1.0.3-x64.exe`。GitHub 自动提供的 Source code 压缩包是源码，不是安装包。
 
 Windows 桌面应用，数据保存在这个项目的 `data` 目录下。双击 `启动.cmd` 即可打开。首次安装依赖需要 Node.js 24 或更新版本和网络连接。也可以在项目目录运行 `npm ci` 和 `npm start`。
 
 ## 分享安装版
 
-`dist/PromptAtelier-Setup-1.0.2-x64.exe` 是 Windows x64 完整安装包，内置 Electron、Node.js、DeepSeek Harness 和两套本地翻译模型，使用者无需另外安装 Node.js。安装向导可选择目录，并创建桌面和开始菜单快捷方式。
+`dist/PromptAtelier-Setup-1.0.3-x64.exe` 是 Windows x64 完整安装包，内置 Electron、Node.js、DeepSeek Harness 和两套本地翻译模型，使用者无需另外安装 Node.js。安装向导可选择目录，并创建桌面和开始菜单快捷方式。
 
 安装版的草稿、历史和图库存放在当前用户的应用数据目录，与开发目录的数据分开。分享包不包含开发者的个人记录、图片或 API Key。需要使用 DeepSeek 分类、拆分和备选生成时，使用者在设置中填写自己的 API Key；本地编辑、图库、离线分组和翻译不需要 Key。Discord 等在线图片下载仍需要可访问对应网站的网络。
 
