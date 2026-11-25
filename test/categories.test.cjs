@@ -13,7 +13,7 @@ const mainRequire = createRequire(mainPath);
 const source = fs.readFileSync(mainPath,'utf8')+'\nsetup();';
 const blank = (body='',categoryId='') => ({id:'',title:'',body,categoryId,params:[],images:{ref:[],style:[],result:[]},hints:{},person:[]});
 
-function openStore(directory,extras={}) {
+function openStore(directory,extras={},modules={}) {
   const handlers = new Map();
   const electron = {
     app:{requestSingleInstanceLock:() => true,whenReady:() => ({then:() => ({catch:() => {}})}),on:() => {}},
@@ -21,7 +21,7 @@ function openStore(directory,extras={}) {
     ipcMain:{handle:(name,callback) => handlers.set(name,callback),on:() => {}},...extras
   };
   const context = vm.createContext({
-    require:id => id === 'electron' ? electron : mainRequire(id),
+    require:id => id === 'electron' ? electron : modules[id] || mainRequire(id),
     __dirname:directory,process:{env:{PROMPT_ATELIER_DATA:path.join(directory,'data')}},
     console,Buffer,URL,Response,Blob
   });
@@ -31,6 +31,38 @@ function openStore(directory,extras={}) {
     return handlers.get(name)(event,...args);
   };
 }
+
+test('saving classifies once into persisted elements and a reusable style pack, then migrates old results',async t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(),'atelier-classification-test-'));
+  t.after(() => fs.rmSync(directory,{recursive:true,force:true}));
+  fs.mkdirSync(path.join(directory,'data'));
+  const file = path.join(directory,'data','library.json');
+  fs.writeFileSync(file,JSON.stringify({settings:{secret:'test',autoClassify:true},entries:[],draft:null}));
+  let calls = 0;
+  const invoke = openStore(directory,{safeStorage:{decryptString:() => 'test-key'}},{'./harness.cjs':{
+    classify:async () => { calls++; return {tags:{subject:['精灵射手']},style:['泡泡马特风格','皮克斯风格','迪士尼风格'],name:'动画风格'}; }
+  }});
+  const saved = invoke('save',blank('精灵射手。泡泡马特风格。皮克斯风格，迪士尼风格'));
+  assert.equal(saved.entry.status,'pending');
+  await new Promise(resolve => setImmediate(resolve));
+  const entry = JSON.parse(fs.readFileSync(file)).entries[0];
+  assert.equal(entry.status,'ai');
+  assert.equal(calls,1);
+  assert.equal(entry.categoryId,'');
+  assert.deepEqual(entry.analysis.tags.medium,entry.analysis.style);
+  assert.equal(entry.analysis.style.length,3);
+  invoke('save',invoke('snapshot').draft);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls,1,'saving unchanged text must reuse existing AI analysis');
+  const legacy = JSON.parse(fs.readFileSync(file));
+  legacy.entries[0].analysis.tags.medium = [];
+  fs.writeFileSync(file,JSON.stringify(legacy));
+  const reopened = openStore(directory);
+  const restored = reopened('snapshot').entries[0];
+  assert.deepEqual([...restored.analysis.tags.medium],[...restored.analysis.style]);
+  assert.equal(restored.status,'ai');
+  assert.equal(JSON.parse(fs.readFileSync(file)).entries[0].analysis.tags.medium.length,3);
+});
 
 test('clipboard image imports are cached and scoped, while empty and oversized images are rejected',async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(),'atelier-paste-test-'));

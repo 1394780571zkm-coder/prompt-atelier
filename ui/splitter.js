@@ -274,10 +274,26 @@ async function translateTokens() {
 }
 
 function loadDraft(draft) {
-  input.value = formatPrompt(draft);
   clear();
-  source = draft;
-  void start(draft);
+  source = structuredClone(draft);
+  input.value = formatPrompt(source);
+  renderSourceImages();
+  void start(source,state.snapshot.settings.hasKey);
+}
+function renderSourceImages() {
+  const panel = $('#splitter-assets');
+  panel.hidden = !source || !Object.values(source.images).some(images => images.length);
+  panel.replaceChildren();
+  if (panel.hidden) return;
+  panel.append(node('div',{className:'splitter-actions'},node('h2',{textContent:'图片素材'}),
+    button('编辑图片素材',() => {
+      if (state.categoryBusy || state.saving || state.imports) return toast('请等当前操作完成。',true);
+      replaceDraft(session ? {...variant(),images:{...variant().images,result:source.images.result}} : source);
+    },'button right','images')));
+  for (const [role,[label]] of Object.entries(roles)) {
+    if (source.images[role].length) panel.append(node('div',{className:'splitter-source-images'},
+      node('h3',{textContent:label}),thumbnails(source.images[role])));
+  }
 }
 function copy(text) {
   void api.copy(text).then(() => toast('已复制，可粘贴到 Midjourney。')).catch(error => toast(error,true));
@@ -292,8 +308,17 @@ function clear() {
   groupingRequest++;
   session = null;
   source = null;
+  renderSourceImages();
 }
-input.oninput = clear;
+input.oninput = () => {
+  const previous = source;
+  clear();
+  if (previous) {
+    source = applyPrompt(previous,input.value,true);
+    source.images.result = previous.images.result;
+    renderSourceImages();
+  }
+};
 $('#splitter-start').onclick = () => void start(source || applyPrompt(blank(),input.value));
 $('#splitter-local').onclick = () => void start(source || applyPrompt(blank(),input.value),false);
 $('#splitter-draft').onclick = () => loadDraft(effectiveDraft());

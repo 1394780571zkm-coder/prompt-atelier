@@ -70,7 +70,7 @@
             <div class="card-heading"><span class="section-icon dark" data-icon-only="terminal"></span><div><h2>最终提示词</h2></div><button class="button primary right" data-action="copy" data-icon="copy">复制提示词</button></div>
             <pre id="final-prompt"></pre>
             <div id="url-warning" class="inline-note" hidden></div>
-            <div class="preview-footer"><span id="save-status"></span><div class="draft-actions"><button class="button" data-action="classify-saved" data-icon="sparkles" hidden>用智能体分类</button><button class="button forest" data-action="save" data-icon="bookmark">保存到历史</button></div></div>
+            <div class="preview-footer"><span id="save-status" role="status" aria-live="polite"></span><div class="draft-actions"><button class="button" data-action="classify-saved" data-icon="sparkles" hidden>用智能体分类</button><button class="button forest" data-action="save" data-icon="bookmark">保存到历史记录</button></div></div>
           </section>
         </div>
         <aside class="assets card">
@@ -92,6 +92,7 @@
         </div>
         <p id="splitter-group-status" role="status">DeepSeek 仅接收正文和本地分类表，不接收垫图链接或 MJ 参数。</p>
       </section>
+      <section id="splitter-assets" class="card splitter-panel" hidden aria-label="载入的图片素材"></section>
       <div id="splitter-results" hidden>
         <section class="card splitter-panel splitter-catalog">
           <div class="splitter-actions"><h2>按类别替换</h2><span id="splitter-count" role="status"></span><button id="splitter-reset" type="button" class="button quiet right">还原全部</button></div>

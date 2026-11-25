@@ -16,5 +16,6 @@ contextBridge.exposeInMainWorld('desktop',{
   openImageUpload:call('open-image-upload'), dragImageFile:file => ipcRenderer.send('drag-image-file',file),
   openData:call('open-data'), revealImage:call('reveal-image'), testHarness:call('test-harness'), styleExplorer:call('style-explorer'),
   onLibrary:callback => ipcRenderer.on('library-changed',(_event,value) => callback(value)),
+  onImageVerificationComplete:callback => ipcRenderer.on('image-verification-complete',() => callback()),
   onTranslationProgress:callback => ipcRenderer.on('translation-progress',(_event,value) => callback(value))
 });

@@ -108,7 +108,7 @@ h1,h2,h3,p{margin:0}
 .empty-inline{padding:7px 0;color:var(--muted);font-size:12px;line-height:1.55}
 #final-prompt{white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0;padding:9px 11px;border-radius:8px;min-height:41px;color:#263b30;background:#eef2e9;font:12px/1.5 Consolas,"Microsoft YaHei UI",monospace}
 #final-prompt.placeholder{color:#607260}
-.preview-footer{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.preview-footer{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
 #save-status{font-size:11px;color:#69786a}
 .inline-warning{color:#93462e;font-size:11px;margin:0 0 8px}
 .inline-note{color:#607064;font-size:11px;margin:0 0 8px}
@@ -255,6 +255,8 @@ dialog::backdrop{background:#10251f8c}
 @media(max-width:1120px){body{grid-template-columns:179px minmax(0,1fr)}.view{padding-inline:18px}.topbar{padding-inline:18px}.workspace{grid-template-columns:minmax(0,1fr) 237px;gap:12px}.hero h1,.page-heading h1{font-size:29px}.hero{height:127px}}
 @media(max-width:880px){body{grid-template-columns:141px minmax(0,1fr)}.sidebar{padding-inline:10px}.workspace{grid-template-columns:1fr}.assets{grid-row:auto}.hero-content{padding-inline:17px}.hero p{max-width:300px}.history-grid{grid-template-columns:minmax(76px,20%) minmax(0,1fr) minmax(92px,23%)}}
 .history-actions{display:flex;flex-wrap:wrap;gap:4px}
+.splitter-source-images{margin-top:14px}
+.splitter-source-images h3{margin-bottom:8px}
 .history-code{display:block;color:#45624e;font:11px/1.5 Consolas,monospace;overflow-wrap:anywhere}
 #param-search{margin:0;min-width:0}
 .composer-content .filter-row{margin-bottom:8px}

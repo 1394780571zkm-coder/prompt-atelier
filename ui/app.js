@@ -21,6 +21,7 @@ let randomMode = false;
 const randomDraft = new Map();
 const pendingImages = new Map();
 const failedImages = new Map();
+let imageVerificationVersion = 0;
 const scopedImageKey = (scope,url) => (scope || '')+'\n'+url;
 const blank = () => ({id:'',categoryId:state.snapshot?.activeCategoryId || '',title:'',body:'',params:[],images:{ref:[],style:[],result:[]},hints:{},person:[]});
 const translations = new Map();
@@ -429,9 +430,8 @@ function updatePreview() {
   }
   const entry = getEntry();
   const status = $('#save-status');
-  const destination = categoryName(d.categoryId);
-  status.textContent = entry ? '已归档 · '+(statusLabels[entry.status] || statusLabels.local)+' · '+destination : '保存到「'+destination+'」 · Ctrl + S';
-  $('[data-action=save]').lastChild.textContent = entry ? '更新历史记录' : '保存到历史';
+  status.textContent = saveStatus(d,entry);
+  $('[data-action=save]').lastChild.textContent = '保存到历史记录';
   $('[data-action=save]').disabled = !d.body || state.categoryBusy || state.saving || state.imports > 0;
   $('[data-action=copy]').disabled = !d.body;
   $('[data-action=classify-saved]').hidden = !entry || entry.body !== d.body || !state.snapshot.settings.hasKey || ['ai','pending'].includes(entry.status);
@@ -534,7 +534,7 @@ function replaceDraft(value) {
 
 function useEntry(entry,reuse=false,addResult=false) {
   if (state.categoryBusy || state.saving || state.imports) return toast('请等当前操作完成。',true);
-  replaceDraft({id:reuse?'':entry.id,categoryId:entry.categoryId,title:entry.title,body:entry.body,params:entry.params,images:{...entry.images,result:reuse?[]:entry.images.result},hints:entry.hints,person:entry.person});
+  replaceDraft({...historyDraft(entry),id:reuse?'':entry.id,images:{...entry.images,result:reuse?[]:entry.images.result}});
   if (addResult) pickFiles('result');
 }
 
@@ -1404,6 +1404,14 @@ function enqueueImport(role,load,linkTarget='',progress=null,groupId='') {
       if (images.length) changed({full:true});
     }
     await refreshGallery();
+    if (images.length) {
+      // A dragged original may repair a previously failed short reference URL.
+      const scope = state.draft.categoryId;
+      for (const image of Object.values(state.draft.images).flat()) {
+        if (image.url && !image.file) failedImages.delete(scopedImageKey(scope,image.url));
+      }
+      hydrateDraftImages();
+    }
     if (images.length || failures.length) toast((images.length ? '已处理 '+images.length+' 张图片。' : '') + [...new Set(failures)].join(' / '),Boolean(failures.length));
   })().catch(error => toast(error,true)).finally(() => {
     state.imports--;
@@ -1416,6 +1424,17 @@ function enqueueImport(role,load,linkTarget='',progress=null,groupId='') {
   });
 }
 
+function isMidjourneyImage(url) { return /^https:\/\/(?:cdn\.midjourney\.com|s\.mj\.run)\//i.test(url); }
+
+function resumeVerifiedImages() {
+  imageVerificationVersion++;
+  for (const image of Object.values(state.draft.images).flat()) {
+    if (image.url && !image.file && isMidjourneyImage(image.url))
+      failedImages.delete(scopedImageKey(state.draft.categoryId,image.url));
+  }
+  hydrateDraftImages();
+}
+
 function hydrateDraftImages() {
   const {categoryId:scope} = state.draft;
   const keyFor = url => scopedImageKey(scope,url);
@@ -1423,6 +1442,8 @@ function hydrateDraftImages() {
   for (const {url} of missing) {
     const key = keyFor(url);
     if (pendingImages.has(key)) continue;
+    const verificationVersion = imageVerificationVersion;
+    let retryAfterVerification = false;
     const task = api.remoteImage(url,'',scope).then(image => {
       let updated = false;
       if (state.draft.categoryId === scope) {
@@ -1432,15 +1453,36 @@ function hydrateDraftImages() {
       }
       if (updated && !state.categoryBusy) changed();
       return refreshGallery();
-    }).catch(error => failedImages.set(key,errorMessage(error))).finally(() => {
+    }).catch(error => {
+      retryAfterVerification = isMidjourneyImage(url) && verificationVersion !== imageVerificationVersion;
+      if (!retryAfterVerification) failedImages.set(key,errorMessage(error));
+    }).finally(() => {
       pendingImages.delete(key);
+      if (retryAfterVerification && state.draft.categoryId === scope) hydrateDraftImages();
       if (state.view === 'editor') renderAssets();
     });
     pendingImages.set(key,task);
   }
   // Leave existing click targets in place during blur. The next render can show the progress state.
 }
-const statusLabels = {pending:'分类中',ai:'DeepSeek 已分类',local:'本地分类',error:'分类待重试'};
+const statusLabels = {pending:'DeepSeek 正在提取词条与风格包',ai:'DeepSeek 提取完成',local:'本地规则提取',error:'DeepSeek 提取失败，可重试'};
+
+function analysisSummary(entry) {
+  const tags = entry.analysis?.tags || {};
+  const count = new Set(Object.values(tags).flat().map(normalize)).size;
+  const groups = Object.values(tags).filter(items => items.length).length;
+  const styles = new Set((entry.analysis?.style || []).map(normalize)).size;
+  return '词库已收录 '+count+' 个词条（'+groups+' 类） · '+(styles ? '风格包 1 个（'+styles+' 项风格）' : '无可复用风格包');
+}
+
+function saveStatus(draft,entry) {
+  const destination = '所属文件夹：'+(draft.categoryId ? '「'+categoryName(draft.categoryId)+'」' : '未指定');
+  if (state.saving) return '正在保存到历史记录…';
+  if (!entry) return '尚未保存到历史记录 · '+destination+' · Ctrl + S';
+  const changed = ['title','body','params','images','hints','person','categoryId'].some(key => JSON.stringify(draft[key]) !== JSON.stringify(entry[key]));
+  if (changed) return '有修改待保存 · '+destination+' · 保存后更新词库与风格包';
+  return '已保存到历史记录 · '+destination+' · '+(statusLabels[entry.status] || statusLabels.local)+' · '+analysisSummary(entry);
+}
 
 function historyDraft(entry) {
   const draft = structuredClone(entry);
@@ -1543,11 +1585,18 @@ function historyCard(entry) {
       replaceDraft(historyDraftValue(active.draft));
     },'button','images'));
     actions.append(button('取消',() => { state.historyEdits.delete(entry.id); renderHistory(); },'button quiet'));
-  } else if (state.historyMode) actions.append(
-    button('微调',() => start('tweak'),'button','sliders-horizontal'),
-    button('编辑',() => start('edit'),'button','square-pen'),
-    button('复用',() => useEntry(entry,true),'button','rotate-ccw'),
-    button('送往拆分台',() => globalThis.openSplitter(historyDraft(entry)),'button','scissors'));
+  } else {
+    actions.append(
+      button('回到编写器',() => useEntry(entry),'button forest','square-pen'),
+      button('送往拆分台',() => {
+        if (state.categoryBusy || state.saving || state.imports) return toast('请等当前操作完成。',true);
+        globalThis.openSplitter(historyDraft(entry));
+      },'button','scissors'));
+    if (state.historyMode) actions.append(
+      button('微调',() => start('tweak'),'button','sliders-horizontal'),
+      button('编辑',() => start('edit'),'button','square-pen'),
+      button('复用',() => useEntry(entry,true),'button','rotate-ccw'));
+  }
   if (state.historyMode && !active && entry.status !== 'pending' && entry.status !== 'ai' && state.snapshot.settings.hasKey) {
     actions.append(button(entry.status==='error'?'重试分类':'用 DeepSeek 分类',async () => {
       try { refreshSnapshot(await api.classify(entry.id)); } catch (error) { toast(error,true); }
@@ -1563,7 +1612,7 @@ function historyCard(entry) {
   const remove = button('删除',() => void deleteHistoryEntries([entry.id]),'button history-delete','trash-2');
   remove.setAttribute('aria-label','删除 '+nameOf(entry));
   actions.append(remove);
-  const folder = state.snapshot.activeCategoryId === null ? node('span',{className:'badge',textContent:categoryName(entry.categoryId)}) : null;
+  const folder = state.snapshot.activeCategoryId === null ? node('span',{className:'badge',textContent:'文件夹：'+(entry.categoryId ? categoryName(entry.categoryId) : '未指定')}) : null;
   const head = node('div',{className:'history-head'},select,node('h2',{textContent:nameOf(entry)}),node('time',{textContent:date,dateTime:entry.updated}),folder,status,actions);
   const left = node('div',{},node('h3',{textContent:'垫图'}),entry.images.ref.length ? thumbnails(entry.images.ref) : small('暂无垫图'));
   const middle = node('div',{},node('h3',{textContent:'提示词正文'}));
@@ -1599,7 +1648,7 @@ function historyCard(entry) {
     } catch (error) { toast(error,true); }
   },'link-button'));
   const results = node('div',{className:'history-results'},node('h3',{textContent:'生成结果 · '+entry.images.result.length}),entry.images.result.length ? thumbnails(entry.images.result) : null,state.historyMode && !active ? button('添加出图',() => useEntry(entry,false,true),'button quiet right','image-plus') : null);
-  return node('article',{className:'card history-card'},head,node('div',{className:'history-grid'},left,middle,right),entry.error ? node('p',{className:'history-error',textContent:entry.error}) : null,results);
+  return node('article',{className:'card history-card'},head,small(analysisSummary(entry)),node('div',{className:'history-grid'},left,middle,right),entry.error ? node('p',{className:'history-error',textContent:entry.error}) : null,results);
 }
 
 function empty(title,description,glyph,action) {
@@ -1930,6 +1979,7 @@ async function start() {
   wire();
   refreshSnapshot(data);
   showView('editor');
+  api.onImageVerificationComplete?.(resumeVerifiedImages);
   hydrateDraftImages();
   if (pendingImages.size) renderAssets();
   api.onLibrary(refreshSnapshot);

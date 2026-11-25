@@ -256,6 +256,14 @@ function reorganizeAnalysis(analysis={}) {
   const style = [...new Set([...(analysis.style || []),...[...styleGroups].flatMap(key => tags[key])])]
     .filter(reusableStyleTerm)
     .filter(term => !content.some(value => term.toLowerCase().includes(value)));
+  // Style-only AI output must also appear in the reusable element catalog.
+  // Run here so saved legacy analyses are repaired by the normal store migration.
+  for (const term of style) {
+    if (assignments.has(term.toLowerCase())) continue;
+    const suggested = suggestedGroup(term);
+    const target = styleGroups.has(suggested) ? suggested : 'mediumStyle';
+    tags[target].push(term);
+  }
   const name = reusableStyleTerm(analysis.name) ? analysis.name : '';
   return {...analysis,tags,groups,style,name};
 }

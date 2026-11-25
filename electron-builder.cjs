@@ -7,7 +7,7 @@ module.exports = {
   npmRebuild:false,
   electronDist:'node_modules/electron/dist',
   files:[
-    'main.cjs','preload.cjs','harness.cjs','remote-image.cjs','translation.cjs',
+    'main.cjs','preload.cjs','harness.cjs','remote-image.cjs','desktop-image.cjs','image-verification.cjs','translation.cjs',
     'harness-text-only.yml','ui/**/*','package.json','LICENSE',
     '!node_modules/onnxruntime-node/bin/napi-v3/{darwin,linux}/**/*',
     '!node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/**/*'

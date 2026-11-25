@@ -51,6 +51,19 @@ test('AI classification only learns phrases found in the original', () => {
   assert.equal(name,'水彩');
 });
 
+test('style-only AI phrases also populate element categories and remain stable on migration', () => {
+  const body = '精灵射手。泡泡马特风格。皮克斯风格，迪士尼风格。柔和侧光';
+  const style = ['泡泡马特风格','皮克斯风格','迪士尼风格','柔和侧光'];
+  const result = decodeClassification(JSON.stringify({tags:{subject:['精灵射手']},style:[...style,'捏造风格'],name:'动画风格'}),body);
+  assert.deepEqual(result.tags.medium,style.slice(0,3));
+  assert.deepEqual(result.tags.lighting,['柔和侧光']);
+  assert.deepEqual(result.style,style);
+  assert.deepEqual(reorganizeAnalysis(result),result);
+  const onlyStyle = decodeClassification(JSON.stringify({style:['皮克斯风格']}),body);
+  assert.deepEqual(onlyStyle.tags.medium,['皮克斯风格']);
+  assert.throws(() => decodeClassification('{"style":["捏造风格"]}',body),/未提取到/);
+});
+
 test('Discord copy restores weighted URLs and drops the chat footer', () => {
   const source = '<https://example.org/a.png>::2 portrait --ar 3:2 --sref [reference](https://s.mj.run/Example)::1.5 --niji 7 - @someone (Open on website for full quality) (fast)';
   const parsed = parsePrompt(source);

@@ -6,6 +6,8 @@ const {createHash,randomUUID} = require('node:crypto');
 const {categories,localAnalysis,reorganizeAnalysis,parsePrompt,formatPrompt,removeImageReferences,publicUrl,styleReferenceTokens,styleReferenceUrl,referenceImage,customGroupKey,cleanBodyTokenState} = require('./ui/rules.js');
 const {classify,runHarness,groupSplitterPrompt} = require('./harness.cjs');
 const {downloadImage,maxImageBytes} = require('./remote-image.cjs');
+const {fetchDesktopImage} = require('./desktop-image.cjs');
+const {createImageVerifier} = require('./image-verification.cjs');
 const {createTranslator,modelDownloaded} = require('./translation.cjs');
 
 const dataDir = process.env.PROMPT_ATELIER_DATA || (app.isPackaged ? path.join(app.getPath('userData'),'data') : path.join(__dirname,'data'));
@@ -150,7 +152,7 @@ function saveEntry(value,updateDraft=true) {
   const entry = {
     ...draft,id:existing?.id || randomUUID(),created:existing?.created || new Date().toISOString(),
     updated:new Date().toISOString(),prompt:formatPrompt(draft),
-    analysis:unchanged ? existing.analysis : localAnalysis(draft.body,draft.hints,knownGroups(draft.categoryId)),
+    analysis:unchanged ? reorganizeAnalysis(existing.analysis) : localAnalysis(draft.body,draft.hints,knownGroups(draft.categoryId)),
     status,
     ...(status === 'pending' ? {classificationTrigger:preserve ? existing.classificationTrigger || 'auto' : 'auto'} : {})
   };
@@ -256,12 +258,30 @@ function remoteName(url) {
 }
 
 const downloads = new Map();
+let remoteImageVerifier;
+function verifyRemoteImage(url) {
+  remoteImageVerifier ||= createImageVerifier({BrowserWindow,net,session:session.defaultSession,getParent:() => window,
+    onVerified:() => {
+      if (window && !window.isDestroyed()) window.webContents.send('image-verification-complete');
+    }});
+  return remoteImageVerifier(url);
+}
+verifyRemoteImage.waitForPending = url => remoteImageVerifier?.waitForPending(url);
+verifyRemoteImage.version = () => remoteImageVerifier?.version() || 0;
+function cachedRemoteImage(url) {
+  const image = store.gallery.find(image => image.url === url && fs.existsSync(path.join(imagesDir,image.file)));
+  if (!image) return null;
+  const target = path.join(imagesDir,image.file);
+  if (fs.statSync(target).size > maxImageBytes) return null;
+  return fs.readFileSync(target);
+}
+
 async function importRemoteImage(value,source='',scope='') {
   const url = publicUrl(value);
   if (!url) throw new Error('请输入可公开访问的图片地址。');
   const cached = store.gallery.find(image => image.url === url && fs.existsSync(path.join(imagesDir,image.file)));
   if (cached) return addToGallery({...cached,source:cached.source || publicUrl(source)},categoryId(scope));
-  if (!downloads.has(url)) downloads.set(url,downloadImage(url,value => session.defaultSession.resolveProxy(value),(target,options) => session.defaultSession.fetch(target,options))
+  if (!downloads.has(url)) downloads.set(url,downloadImage(url,value => session.defaultSession.resolveProxy(value),(target,options) => fetchDesktopImage(net,session.defaultSession,target,options),cachedRemoteImage,verifyRemoteImage)
     .then(bytes => cacheImage(bytes,remoteName(url),url))
     .finally(() => downloads.delete(url)));
   const image = await downloads.get(url);

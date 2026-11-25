@@ -98,8 +98,9 @@ function decodeClassification(answer, body) {
     if (!existing) groups[id] = label.trim();
     tags[id] = [...new Set([...(tags[id] || []),...terms])];
   }
-  if (!Object.values(tags).flat().length) throw new Error('DeepSeek 未提取到可复用的原文。');
-  return reorganizeAnalysis({tags,groups,style:clean(result.style),name:typeof result.name === 'string' ? result.name.trim().slice(0,42) : ''});
+  const analysis = reorganizeAnalysis({tags,groups,style:clean(result.style),name:typeof result.name === 'string' ? result.name.trim().slice(0,42) : ''});
+  if (!Object.values(analysis.tags).flat().length) throw new Error('DeepSeek 未提取到可复用的原文。');
+  return analysis;
 }
 
 async function classify(key,model,body,knownGroups=[],run=runHarness) {
